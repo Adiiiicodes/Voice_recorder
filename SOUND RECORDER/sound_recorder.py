@@ -136,7 +136,7 @@ class SoundRecorderApp(QWidget):
         
         self.status_label = QLabel("Welcome to the Sound Recorder!", self)
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("font-size: 20px; font-weight: bold;")
+        self.status_label.setStyleSheet("font-size: 40px; font-weight: bold;")
         layout.addWidget(self.status_label)
 
         # Mic animation label
