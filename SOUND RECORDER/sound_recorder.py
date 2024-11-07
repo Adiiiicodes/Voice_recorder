@@ -118,6 +118,7 @@ class SoundRecorderApp(QWidget):
             QListWidget {
                 background-color: #3c3f4a;
                 border: none;
+                font-size: 20px;
             }
             QListWidget::item {
                 padding: 6px 12px;
