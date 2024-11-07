@@ -4,8 +4,8 @@ import time
 import sounddevice as sd
 import numpy as np
 from pydub import AudioSegment
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QListWidget, QListWidgetItem, QMessageBox, QStyleFactory, QLineEdit
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QListWidget, QListWidgetItem, QStyleFactory, QLineEdit, QHBoxLayout
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt
 import subprocess
 
@@ -91,10 +91,10 @@ class SoundRecorderApp(QWidget):
         super().__init__()
         self.init_ui()
         self.load_recordings()
-        
+
     def init_ui(self):
         self.setWindowTitle("Sound Recorder")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 600, 500)  # Increased window size
         self.setWindowIcon(QIcon('microphone.png'))
         self.setStyleSheet("""
             QWidget {
@@ -136,21 +136,33 @@ class SoundRecorderApp(QWidget):
         
         self.status_label = QLabel("Welcome to the Sound Recorder!", self)
         self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(self.status_label)
+
+        # Mic animation label
+        self.mic_animation_label = QLabel()
+        self.mic_animation_label.setAlignment(Qt.AlignCenter)
+        self.mic_animation_label.setFixedSize(150, 150)  # Adjusted for visual appeal
+        layout.addWidget(self.mic_animation_label)
+
+        control_layout = QHBoxLayout()
         
         self.record_button = QPushButton("Start Recording", self)
         self.record_button.clicked.connect(self.toggle_recording)
-        layout.addWidget(self.record_button)
+        control_layout.addWidget(self.record_button)
         
         self.play_button = QPushButton("Play Selected Recording", self)
         self.play_button.clicked.connect(self.play_selected_recording)
-        layout.addWidget(self.play_button)
+        control_layout.addWidget(self.play_button)
         
         self.delete_button = QPushButton("Delete Selected Recording", self)
         self.delete_button.clicked.connect(self.delete_selected_recording)
-        layout.addWidget(self.delete_button)
+        control_layout.addWidget(self.delete_button)
         
+        layout.addLayout(control_layout)
+
         self.rename_label = QLabel("Rename Recording:")
+        self.rename_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.rename_label)
         
         self.rename_input = QLineEdit()
@@ -162,25 +174,33 @@ class SoundRecorderApp(QWidget):
         layout.addWidget(self.recordings_list)
         
         self.setLayout(layout)
-    
+
     def toggle_recording(self):
         if is_recording:
             stop_recording()
             self.record_button.setText("Start Recording")
             self.status_label.setText(f"Recording saved as {current_file}")
             self.load_recordings()
+            self.set_mic_animation(False)
         else:
             record_audio()
             self.record_button.setText("Stop Recording")
             self.status_label.setText("Recording in progress...")
-    
+            self.set_mic_animation(True)
+
+    def set_mic_animation(self, is_recording):
+        if is_recording:
+            self.mic_animation_label.setPixmap(QPixmap("mic_animation.gif"))
+        else:
+            self.mic_animation_label.setPixmap(QPixmap("mic_inactive.png"))
+        self.mic_animation_label.setAlignment(Qt.AlignCenter)
+
     def play_selected_recording(self):
         if self.recordings_list.currentItem():
             filename = self.recordings_list.currentItem().text()
             file_path = os.path.join("recordings", filename)
             if os.path.exists(file_path):
                 try:
-                    # Updated: Removed shell=True
                     subprocess.Popen(["ffplay", "-nodisp", "-autoexit", file_path])
                     self.status_label.setText(f"Playing {filename}")
                 except FileNotFoundError:
