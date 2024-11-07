@@ -107,6 +107,7 @@ class SoundRecorderApp(QWidget):
                 border: none;
                 padding: 8px 16px;
                 border-radius: 4px;
+                font-size : 30px
             }
             QPushButton:hover {
                 background-color: #4b4f5a;
