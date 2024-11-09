@@ -4,28 +4,28 @@ import time
 import sounddevice as sd
 import numpy as np
 from pydub import AudioSegment
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QListWidget, QListWidgetItem, QStyleFactory, QLineEdit, QHBoxLayout
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, 
+    QListWidget, QListWidgetItem, QStyleFactory, QLineEdit, QHBoxLayout
+)
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt
 import subprocess
 
-# Set the path to FFmpeg (adjust the path to where ffmpeg.exe is located on your system)
+# Set the path to FFmpeg (adjust the path if necessary)
 AudioSegment.ffmpeg = "ffmpeg"  # Ensure ffmpeg is in the system path
 
 # Global Variables
 recording = None
-sampling_rate = 44100  # Standard sampling rate
-duration = 0  # Recording duration
+sampling_rate = 44100
+duration = 0
 is_recording = False
 current_file = None
 recordings = []
 
 # File Handling
 def save_audio(filename, audio_data, format='wav'):
-    if format == 'mp3':
-        audio_data.export(filename, format='mp3')
-    else:
-        audio_data.export(filename, format='wav')
+    audio_data.export(filename, format=format)
     print(f"File saved as {filename}")
 
 def delete_audio(filename):
@@ -44,6 +44,18 @@ def rename_audio(old_filename, new_filename):
 
 def list_recordings():
     return [f for f in os.listdir('recordings') if os.path.isfile(os.path.join('recordings', f))]
+
+# Audio Conversion
+def convert_to_mp3(input_file):
+    try:
+        audio = AudioSegment.from_file(input_file)
+        output_file = os.path.splitext(input_file)[0] + ".mp3"
+        audio.export(output_file, format="mp3")
+        print(f"File converted to MP3 and saved as {output_file}")
+        return output_file
+    except Exception as e:
+        print(f"Error converting file: {e}")
+        return None
 
 # Audio Recording and Playback Logic
 def record_audio():
@@ -72,12 +84,11 @@ def stop_recording():
     is_recording = False
     print("Recording stopped.")
     
-    # Convert numpy array to pydub audio segment
     audio_data = np.concatenate(recording, axis=0)
     audio_segment = AudioSegment(
         audio_data.tobytes(),
         frame_rate=sampling_rate,
-        sample_width=2,  # Assuming 16-bit audio (2 bytes)
+        sample_width=2,
         channels=1
     )
     
@@ -94,29 +105,32 @@ class SoundRecorderApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Sound Recorder")
-        self.setGeometry(100, 100, 600, 500)  # Increased window size
+        self.setGeometry(100, 100, 600, 500)
         self.setWindowIcon(QIcon('microphone.png'))
+
+
+
         self.setStyleSheet("""
             QWidget {
-                background-color: #282c34;
+                background-color: #0E5200;
                 color: #c4c4c4;
                 font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             }
             QPushButton {
-                background-color: #3c3f4a;
+                background-color: #2C701E;
                 border: none;
                 padding: 8px 16px;
                 border-radius: 4px;
                 font-size : 30px
             }
             QPushButton:hover {
-                background-color: #4b4f5a;
+                background-color: #4B4F5A;
             }
             QLabel {
-                font-size: 16px;
+                font-size: 30px;
             }
             QListWidget {
-                background-color: #3c3f4a;
+                background-color: #2C701E;
                 border: none;
                 font-size: 20px;
             }
@@ -127,10 +141,11 @@ class SoundRecorderApp(QWidget):
                 background-color: #4b4f5a;
             }
             QLineEdit {
-                background-color: #3c3f4a;
+                background-color: #2C701E;
                 border: none;
                 padding: 6px 12px;
                 border-radius: 4px;
+                font-size: 20px
             }
         """)
         
@@ -140,12 +155,6 @@ class SoundRecorderApp(QWidget):
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet("font-size: 40px; font-weight: bold;")
         layout.addWidget(self.status_label)
-
-        # Mic animation label
-        self.mic_animation_label = QLabel()
-        self.mic_animation_label.setAlignment(Qt.AlignCenter)
-        self.mic_animation_label.setFixedSize(150, 150)  # Adjusted for visual appeal
-        layout.addWidget(self.mic_animation_label)
 
         control_layout = QHBoxLayout()
         
@@ -161,7 +170,15 @@ class SoundRecorderApp(QWidget):
         self.delete_button.clicked.connect(self.delete_selected_recording)
         control_layout.addWidget(self.delete_button)
         
+        self.convert_button = QPushButton("Convert to MP3", self)
+        self.convert_button.clicked.connect(self.convert_selected_to_mp3)
+        control_layout.addWidget(self.convert_button)
+        
         layout.addLayout(control_layout)
+
+        self.select_file_button = QPushButton("Select File to Convert to MP3")
+        self.select_file_button.clicked.connect(self.select_file_to_convert)
+        layout.addWidget(self.select_file_button)
 
         self.rename_label = QLabel("Rename Recording:")
         self.rename_label.setAlignment(Qt.AlignCenter)
@@ -183,19 +200,10 @@ class SoundRecorderApp(QWidget):
             self.record_button.setText("Start Recording")
             self.status_label.setText(f"Recording saved as {current_file}")
             self.load_recordings()
-            self.set_mic_animation(False)
         else:
             record_audio()
             self.record_button.setText("Stop Recording")
             self.status_label.setText("Recording in progress...")
-            self.set_mic_animation(True)
-
-    def set_mic_animation(self, is_recording):
-        if is_recording:
-            self.mic_animation_label.setPixmap(QPixmap("mic_animation.gif"))
-        else:
-            self.mic_animation_label.setPixmap(QPixmap("mic_inactive.png"))
-        self.mic_animation_label.setAlignment(Qt.AlignCenter)
 
     def play_selected_recording(self):
         if self.recordings_list.currentItem():
@@ -206,7 +214,7 @@ class SoundRecorderApp(QWidget):
                     subprocess.Popen(["ffplay", "-nodisp", "-autoexit", file_path])
                     self.status_label.setText(f"Playing {filename}")
                 except FileNotFoundError:
-                    self.status_label.setText("Error: 'ffplay' not found. Please ensure FFmpeg is installed and in the system path.")
+                    self.status_label.setText("Error: 'ffplay' not found.")
                 except Exception as e:
                     self.status_label.setText(f"Error playing {filename}: {str(e)}")
             else:
@@ -243,9 +251,29 @@ class SoundRecorderApp(QWidget):
             item.setIcon(QIcon('microphone.png'))
             self.recordings_list.addItem(item)
 
+    def convert_selected_to_mp3(self):
+        if self.recordings_list.currentItem():
+            filename = self.recordings_list.currentItem().text()
+            file_path = os.path.join("recordings", filename)
+            mp3_file = convert_to_mp3(file_path)
+            if mp3_file:
+                self.status_label.setText(f"Converted {filename} to MP3.")
+            else:
+                self.status_label.setText("Error converting to MP3.")
+        else:
+            self.status_label.setText("No recording selected.")
+
+    def select_file_to_convert(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Audio File to Convert", "", "Audio Files (*.wav *.ogg *.flac *.mp4 *.m4a *.aac)")
+        if file_path:
+            mp3_file = convert_to_mp3(file_path)
+            if mp3_file:
+                self.status_label.setText(f"Converted {os.path.basename(file_path)} to MP3.")
+            else:
+                self.status_label.setText("Error converting file to MP3.")
+
 # Main function to run the app
 if __name__ == '__main__':
-    # Ensure the recordings folder exists
     if not os.path.exists('recordings'):
         os.makedirs('recordings')
 
